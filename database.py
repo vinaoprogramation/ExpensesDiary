@@ -1,0 +1,43 @@
+import os
+from collections.abc import Iterator
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import(
+  DeclarativeBase,
+  Session,
+  sessionmaker
+)
+
+load_dotenv()
+
+DATABASE_URL = URL.create(
+  drivername="mysql+pymysql",
+  username=os.getenv("DB_USER", "crud_app"),
+  password=os.environ["DB_PASSWORD"],
+  host=os.getenv("DB_HOST", "127.0.0.1"),
+  port=int(os.getenv("DB_PORT", "3306")),
+  database=os.getenv("DB_NAME", "fastapi_crud"),
+  query={"charset": "utf8mb4"}
+)
+
+engine = create_engine(
+  DATABASE_URL,
+  pool_pre_ping=True,
+  pool_recycle=1800
+)
+
+SessionLocal = sessionmaker(
+  bind=engine,
+  autoflush=False,
+  expire_on_commit=False
+)
+
+class Base(DeclarativeBase):
+  pass
+
+
+def get_db() -> Iterator[Session]:
+  with SessionLocal() as session:
+    yield session
