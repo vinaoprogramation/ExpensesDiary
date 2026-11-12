@@ -25,6 +25,7 @@ router = APIRouter(
 )
 
 SessionDep = Annotated[Session, Depends(get_db)]
+TokenDep = Annotated[dict, Depends(check_token)]
 
 @router.get("/health", response_model=object, status_code=status.HTTP_200_OK)
 def check_health():
@@ -36,9 +37,13 @@ def check_health():
   response_model=ExpensesCreate,
   status_code=status.HTTP_201_CREATED
 )
-def create_expenses(payload: ExpensesCreate, db: SessionDep):
+def create_expenses(payload: ExpensesCreate, db: SessionDep, token: TokenDep):
+
+  id = token["sub"]
+
   expenses = Expenses(
-    expenses=payload.expenses
+    expenses=payload.expenses,
+    user_id=id
   )
 
   db.add(expenses)  

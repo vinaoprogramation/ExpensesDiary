@@ -1,6 +1,6 @@
 from enum import Enum as PyEnum
-from sqlalchemy import Integer, String, Enum, JSON, DateTime, Boolean, true
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, String, Enum, JSON, DateTime, Boolean, true, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from database import Base
@@ -61,6 +61,11 @@ class Expenses(Base):
     nullable=False,
   )
 
+  user_id: Mapped[int] = mapped_column(
+    Integer,
+    ForeignKey("users.id", ondelete="CASCADE")
+  )
+
 class Reports(Base):
   __tablename__ = "reports"
   
@@ -70,8 +75,8 @@ class Reports(Base):
     autoincrement=True    
   )
   
-  report: Mapped[JSON] = mapped_column(
-    JSON,
+  report: Mapped[str] = mapped_column(
+    String(3000),
     nullable=False,
   )
   
@@ -85,4 +90,14 @@ class Reports(Base):
     Boolean,
     server_default=true(),
     nullable=False,
+  )
+
+  user_id: Mapped[int] = mapped_column(
+    Integer,
+    ForeignKey("users.id", ondelete="CASCADE")
+  )
+
+  expenses_id: Mapped[int] = mapped_column(
+    Integer,
+    ForeignKey("expenses.id", ondelete="CASCADE")
   )

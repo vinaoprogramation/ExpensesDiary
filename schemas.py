@@ -33,3 +33,10 @@ class LoginInput(BaseModel):
 
 class ExpensesCreate(BaseModel):
   expenses: dict[str, Any] = Field(max_length=1000)
+
+class ReportsRead(BaseModel):
+  reports: str = Field(max_length=3000)
+
+class ChatRequest(BaseModel):
+  prompt: str
+  
