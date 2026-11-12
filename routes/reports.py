@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Expenses
-from schemas import UserCreate, UserUpdate, UserRead, ExpensesCreate, ReportsRead
+from schemas import UserCreate, UserUpdate, UserRead, ExpensesCreate, ReportsRead, FinancialReport
 from security import hash_password
 from middlewares.jwt_token import check_token
 
@@ -55,7 +55,7 @@ def check_health():
   status_code=status.HTTP_200_OK
 )
 async def generate_reports(db: SessionDep, expenses_id: int, token: TokenDep):
-  id = {expenses_id}
+  id = expenses_id
 
   user_id = token["sub"]
 
@@ -78,7 +78,12 @@ async def generate_reports(db: SessionDep, expenses_id: int, token: TokenDep):
 
   expenses = db.scalars(query).all()
 
-  print(expenses)
+  expenses_data = [
+    {c.name: getattr(expense, c.name) for c in expense.__table__.columns}
+    for expense in expenses
+  ]
+
+  print(expenses_data)
 
   if expenses is None:
     raise HTTPException(
@@ -88,12 +93,37 @@ async def generate_reports(db: SessionDep, expenses_id: int, token: TokenDep):
 
   try:
       completion = await groq_client.chat.completions.create(
-          model="openai/gpt-oss-120b",
-          messages=[{"role": "user", "content": "Gere um relatório sobre os seguintes gastos, destacando formas de poupar dinheiro e como organiza-los: {expenses}"}],
-          temperature=0.7
+            model="openai/gpt-oss-120b",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Você é um consultor financeiro. Analise os dados do usuário e preencha o relatório financeiro estruturado com cálculos precisos."
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Gere um modelo de gastos com base no salário enviado e nos gastos apresentados, "
+                        "mostrando aspectos como desbalanceamento, gastos por impulso, necessidades "
+                        f"e, principalmente, o objetivo do usuário. Essas são as informações: {expenses_data}"
+                    ),
+                },
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "financial_report",
+                    "strict": True,
+                    "schema": FinancialReport.model_json_schema(),
+                },
+            },
+            temperature=0.3,
       )
 
-      return str({"response": completion.choices[0].message.content})
+      raw_content = completion.choices[0].message.content
+
+      parsed_report = FinancialReport.model_validate_json(raw_content).model_dump()
+
+      return {"reports": parsed_report}
 
   except Exception as e:
       traceback.print_exc()
